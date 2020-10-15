@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/xml"
 	"errors"
+	"flag"
 	"log"
 	"net/http"
 	"net/url"
@@ -56,14 +57,26 @@ func writefile(filename string, doc OutputForm) {
 	defer file.Close()
 	file.Write(output)
 	file.Write([]byte("\n"))
-	// ioutil.WriteFile(filename, output, os.ModeAppend)
+}
+
+var (
+	fileName  string
+	pageNums  int
+	waitTime  time.Duration
+	website   string
+	proxyAddr string
+)
+
+func init() {
+	flag.StringVar(&fileName, "filename", "./test.xml", "储存结果的文件")
+	flag.IntVar(&pageNums, "pagenums", 500, "爬取多少页面")
+	flag.DurationVar(&waitTime, "waittime", time.Millisecond*100, "爬取每个页面后等待多少时间")
+	flag.StringVar(&website, "website", "https://en.wikipedia.org/wiki/Special:Random", "你要爬取的页面")
+	flag.StringVar(&proxyAddr, "proxyaddr", "http://localhost:10807", "代理的地址")
 }
 func main() {
-	filename := ".\\test.xml"
-	pagenums := 500
-	waittime := time.Duration(time.Millisecond * 100)
-	website := "https://en.wikipedia.org/wiki/Special:Random"
-	proxyAddr := "http://localhost:10807"
+
+	flag.Parse()
 	var finalurl string
 	proxy, err := url.Parse(proxyAddr)
 
@@ -86,7 +99,7 @@ func main() {
 			return nil
 		},
 	}
-	for i := 0; i < pagenums; i++ {
+	for i := 0; i < pageNums; i++ {
 		response, err := httpClient.Get(website)
 		if err != nil {
 			log.Fatal(err)
@@ -111,9 +124,6 @@ func main() {
 				mydoc.Text += selection.Text()
 			})
 		}
-		// doc.Find("body").Find("div[id=bodyContent]").Find("div[class=mw-parser-output]").Find("p:first-of-type").Next().Each(func(i int, selection *goquery.Selection) {
-		// 	mydoc.Text += selection.Text()
-		// })
 		mydoc.Title = strings.Replace(mydoc.Title, "\n", "", -1)
 		mydoc.Text = strings.Replace(mydoc.Text, "\n", "", -1)
 		mydoc.URL = strings.Replace(mydoc.URL, "\n", "", -1)
@@ -121,9 +131,9 @@ func main() {
 			log.Printf("too short in %s of %s", mydoc.Title, mydoc.Text)
 			continue
 		}
-		writefile(filename, mydoc)
-		time.Sleep(waittime)
-		log.Printf("file %d is writen,finesed %f %% of %d files  \n", i, float32(i)/float32(pagenums), pagenums)
+		writefile(fileName, mydoc)
+		time.Sleep(waitTime)
+		log.Printf("file %d is writen,finesed %f %% of %d files  \n", i, float32(i)/float32(pageNums), pageNums)
 	}
 
 }
